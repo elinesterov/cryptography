@@ -22,6 +22,8 @@ struct EvpMdCtxGuard(*mut ffi::EVP_MD_CTX);
 impl Drop for EvpMdCtxGuard {
     fn drop(&mut self) {
         if !self.0.is_null() {
+            // SAFETY: self.0 is a valid EVP_MD_CTX pointer (null-checked above).
+            // EVP_MD_CTX_free is safe to call on a valid context.
             unsafe {
                 ffi::EVP_MD_CTX_free(self.0);
             }
@@ -37,6 +39,8 @@ struct OsslParamBldGuard(*mut ffi::OSSL_PARAM_BLD);
 impl Drop for OsslParamBldGuard {
     fn drop(&mut self) {
         if !self.0.is_null() {
+            // SAFETY: self.0 is a valid OSSL_PARAM_BLD pointer (null-checked above).
+            // OSSL_PARAM_BLD_free is safe to call on a valid builder.
             unsafe {
                 ffi::OSSL_PARAM_BLD_free(self.0);
             }
@@ -52,6 +56,8 @@ struct OsslParamGuard(*mut ffi::OSSL_PARAM);
 impl Drop for OsslParamGuard {
     fn drop(&mut self) {
         if !self.0.is_null() {
+            // SAFETY: self.0 is a valid OSSL_PARAM pointer (null-checked above).
+            // OSSL_PARAM_free is safe to call on a valid param array.
             unsafe {
                 ffi::OSSL_PARAM_free(self.0);
             }
@@ -121,6 +127,8 @@ fn from_public_bytes(data: &[u8]) -> pyo3::PyResult<Ed25519PublicKey> {
 fn build_ed25519ph_params(
     context: Option<&[u8]>,
 ) -> CryptographyResult<(OsslParamBldGuard, OsslParamGuard)> {
+    // SAFETY: All FFI calls check return values. OSSL_PARAM_BLD and OSSL_PARAM
+    // are wrapped in RAII guards for cleanup in all code paths.
     unsafe {
         let bld = ffi::OSSL_PARAM_BLD_new();
         if bld.is_null() {
@@ -201,6 +209,9 @@ impl Ed25519PrivateKey {
             }
         }
 
+        // SAFETY: md_ctx is valid (null-checked). pkey_ptr borrows self.pkey which
+        // outlives this block. All FFI calls check return values. Resources are
+        // protected by RAII guards (_md_ctx_guard, _bld_guard, params_guard).
         unsafe {
             // Create message digest context.
             let md_ctx = ffi::EVP_MD_CTX_new();
@@ -369,6 +380,9 @@ impl Ed25519PublicKey {
             }
         }
 
+        // SAFETY: md_ctx is valid (null-checked). pkey_ptr borrows self.pkey which
+        // outlives this block. All FFI calls check return values. Resources are
+        // protected by RAII guards (_md_ctx_guard, _bld_guard, params_guard).
         unsafe {
             // Create message digest context.
             let md_ctx = ffi::EVP_MD_CTX_new();

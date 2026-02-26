@@ -197,13 +197,64 @@ class TestEd25519phRoundtrip:
 
         assert sig_plain != sig_prehashed
 
-    def test_context_too_long_raises(self):
-        """Context > 255 bytes must raise ValueError."""
+    def test_empty_context_equals_none_context(self):
+        """context=b'' and context=None must produce identical signatures.
+
+        RFC 8032: Ed25519ph with no context and Ed25519ph with an empty
+        context both include the dom2(1, "") prefix. OpenSSL defaults to
+        an empty context when the context-string param is omitted.
+        """
+        key = Ed25519PrivateKey.from_private_bytes(
+            bytes.fromhex(
+                "2d88c28fd501c157eb4d59f3e33f8d91"
+                "e5fe1bc3c7cc56a513c3eab769482de5"
+            )
+        )
+        message = b"context equivalence test"
+
+        sig_none = key.sign_prehashed(message)
+        sig_empty = key.sign_prehashed(message, context=b"")
+
+        assert sig_none == sig_empty
+
+        # Cross-verify: signature from None-context verifies with empty context
+        pub = key.public_key()
+        pub.verify_prehashed(sig_none, message, context=b"")
+        pub.verify_prehashed(sig_empty, message)
+
+    def test_empty_message_roundtrip(self):
+        """Ed25519ph must handle empty message (SHA-512 of empty = valid)."""
+        key = Ed25519PrivateKey.generate()
+        sig = key.sign_prehashed(b"")
+        key.public_key().verify_prehashed(sig, b"")
+
+    def test_wrong_key_raises(self):
+        """Signature from key A must fail verification with key B."""
+        key_a = Ed25519PrivateKey.generate()
+        key_b = Ed25519PrivateKey.generate()
+        message = b"wrong key test"
+
+        sig = key_a.sign_prehashed(message)
+
+        with pytest.raises(InvalidSignature):
+            key_b.public_key().verify_prehashed(sig, message)
+
+    def test_context_too_long_sign_raises(self):
+        """Context > 255 bytes on sign must raise ValueError."""
         key = Ed25519PrivateKey.generate()
         long_context = b"x" * 256
 
         with pytest.raises(ValueError, match="255"):
             key.sign_prehashed(b"data", context=long_context)
+
+    def test_context_too_long_verify_raises(self):
+        """Context > 255 bytes on verify must raise ValueError."""
+        key = Ed25519PrivateKey.generate()
+        sig = key.sign_prehashed(b"data")
+        long_context = b"x" * 256
+
+        with pytest.raises(ValueError, match="255"):
+            key.public_key().verify_prehashed(sig, b"data", context=long_context)
 
     def test_context_max_length_ok(self):
         """Context exactly 255 bytes must succeed."""

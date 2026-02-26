@@ -141,8 +141,9 @@ class Ed25519PrivateKey(metaclass=abc.ABCMeta):
         self, data: Buffer, context: Buffer | None = None
     ) -> bytes:
         """
-        Sign using Ed25519ph (RFC 8032). Pass the original message;
-        OpenSSL computes SHA-512 internally.
+        Sign using the Ed25519ph algorithm (RFC 8032). Despite the
+        'prehashed' name, pass the original message — OpenSSL performs
+        the SHA-512 prehash internally.
         """
 
     @abc.abstractmethod
