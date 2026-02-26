@@ -49,6 +49,17 @@ class Ed25519PublicKey(metaclass=abc.ABCMeta):
         """
 
     @abc.abstractmethod
+    def verify_prehashed(
+        self,
+        signature: Buffer,
+        data: Buffer,
+        context: Buffer | None = None,
+    ) -> None:
+        """
+        Verify an Ed25519ph signature (RFC 8032).
+        """
+
+    @abc.abstractmethod
     def __eq__(self, other: object) -> bool:
         """
         Checks equality.
@@ -123,6 +134,15 @@ class Ed25519PrivateKey(metaclass=abc.ABCMeta):
     def sign(self, data: Buffer) -> bytes:
         """
         Signs the data.
+        """
+
+    @abc.abstractmethod
+    def sign_prehashed(
+        self, data: Buffer, context: Buffer | None = None
+    ) -> bytes:
+        """
+        Sign using Ed25519ph (RFC 8032). Pass the original message;
+        OpenSSL computes SHA-512 internally.
         """
 
     @abc.abstractmethod
